@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+
+# v1 tried to calculate the space with unit M and sort the results
+#
+
+import re
+import os,stat
+import shutil
+import sys
+from multiprocessing import Pool
+import time
+ 
+ 
+def space_check_task(name):
+ 
+    #print('Run task %s (%s)...' % (name, os.getpid()))
+    start = time.time()
+    #time.sleep(1)
+    basename = (os.popen("basename "+name).read()) #print(basename)
+    os.system("du -sh -m "+name+" >> /tmp/space.log"+basename)
+
+#    stats={}
+#    with open("/tmp/space.log", 'r') as tmpLogFile:
+#    	for line in tmpLogFile:
+#		#print(line)
+#		projname=line.split()[1]
+#		sizename=line.split()[0]
+#		stats[projname]=sizename
+#    
+#    stats_sort=sorted(stats.items(),key=lambda x:x[1],reverse=True)
+#    for key,value in stats.items():
+#		print(key+"------"+value)
+#
+#    #print(stats_sort)
+#    with open(logfile,'w') as LogFile:
+#    	for key,value in stats_sort.items():
+#		print(key+"------"+value)
+#		LogFile.write(key+" "+value)
+
+
+    end = time.time()
+ 
+    #print('check %s runs %0.2f seconds.' % (name, (end - start)))
+ 
+if __name__=='__main__':
+	#os.system("rm /tmp/space*")
+	if len(sys.argv) == 1:
+		print('Usage: script name folderPATH.\nI only check the first level folder under your input path.\n')
+		exit(0)
+	elif len(sys.argv) == 2:
+		#print(sys.argv[1])
+		checkdir=sys.argv[1]
+		
+		folderlist=[]
+		if os.path.isdir(checkdir):
+			for folder in os.listdir(checkdir):
+				if (not re.search("\/\.",checkdir  + "/" + folder)) and (os.path.isdir(checkdir  + "/" + folder)):
+					#print(checkdir  + "/" + folder)
+					folderlist.append(checkdir  + "/" + folder)
+			folderlist.sort()
+		else:
+			print("make sure that provided stdcell path is correct")
+		#print('Parent process %s.' % os.getpid())
+		os.system("rm /tmp/space.log* >/dev/null 2>&1")
+		p = Pool(24)
+		for checks in folderlist:
+		    p.apply_async(space_check_task, args=(checks,))
+		#print('Waiting for all subprocesses done...')
+		p.close()
+		p.join()
+		#print('All subprocesses done.')
+	daytime = time.strftime("%m_%d",time.localtime())
+    	mintime = time.strftime("%m_%d_%H:%M",time.localtime())
+    	hourtime = time.strftime("%m_%d_%H",time.localtime())
+	#if (re.match(sys.argv[1],"rscratch" )):
+	logfile="/rscratch/general/space.check.logs/"+hourtime+":00.space.log"
+    	os.system("cat /tmp/space.log* > /tmp/space.logtotal")
+    	os.system("sort -t, -k1,1n /tmp/space.logtotal | tee "+logfile)
+
+	#os.system("cat /tmp/space_* >/tmp/toal_space_pre")
